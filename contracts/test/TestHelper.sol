@@ -20,7 +20,7 @@ contract TestHelper {
     //     return(sent);
     // }
 
-    function withdraw(uint amount) public {
-        multiSig.withdraw(amount);
-    }
+    // function withdraw(uint amount) public {
+    //     multiSig.withdraw(amount);
+    // }
 }
