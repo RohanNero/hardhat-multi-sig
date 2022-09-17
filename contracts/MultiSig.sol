@@ -19,19 +19,6 @@ error MultiSig__WithdrawFailed();
 contract MultiSig {
     // Type declarations
 
-    event OwnerAdded(address indexed owner);
-    event DepositSubmitted(
-        address indexed depositor,
-        uint256 indexed depositId,
-        uint256 indexed value
-    );
-    event TransactionProposed(
-        address indexed proposer,
-        address to,
-        uint256 indexed transactionId,
-        uint256 indexed value
-    );
-
     struct Transaction {
         address proposer;
         address to;
@@ -65,6 +52,24 @@ contract MultiSig {
     mapping(address => bool) public isOwner;
     mapping(address => Transaction[]) public addressToTxArray;
     mapping(address => Deposit[]) public addressToDepositArray;
+
+    event OwnerAdded(address indexed owner);
+    event DepositSubmitted(
+        address indexed depositor,
+        uint256 indexed depositId,
+        uint256 indexed value
+    );
+    event TransactionProposed(
+        address indexed proposer,
+        address to,
+        uint256 indexed transactionId,
+        uint256 indexed value
+    );
+    event SharedFundsAdded(address indexed owner, uint indexed amount);
+    event TransactionConfirmed(address indexed owner, uint indexed txId, uint indexed confirmations);
+    event ConfirmationRevoked(address indexed owner, uint indexed txId, uint indexed confirmations);
+    event TransactionExecuted(address indexed owner, uint indexed txId);
+    event Withdraw(address indexed owner, uint indexed amount);
 
     modifier onlyOwner() {
         if (isOwner[msg.sender] == false) {
@@ -149,7 +154,8 @@ contract MultiSig {
             revert MultiSig__InsufficientBalance(balances[msg.sender], value);
         }
         balances[msg.sender] -= value;
-        s_sharedFunds += value;     
+        s_sharedFunds += value;
+        emit SharedFundsAdded(msg.sender, value);     
     }
 
     function proposeTransaction(
@@ -188,14 +194,16 @@ contract MultiSig {
         }
         hasConfirmed[msg.sender][_txId] = true;
         transactionArray[_txId].confirmations += 1;
+        emit TransactionConfirmed(msg.sender, _txId, transactionArray[_txId].confirmations);
     }
 
-    function revokeConfirmation(uint _txId) public onlyOwner exists(_txId) isExecuted(_txId) returns(uint) {
+    function revokeConfirmation(uint _txId) public onlyOwner exists(_txId) isExecuted(_txId) {
         if(hasConfirmed[msg.sender][_txId] == false) {
             revert MultiSig__TxNotConfirmed(_txId);
         }
         hasConfirmed[msg.sender][_txId] = false;
         transactionArray[_txId].confirmations -= 1;
+        emit ConfirmationRevoked(msg.sender, _txId, transactionArray[_txId].confirmations);
     }
 
     function executeTransaction(uint256 _txId) public onlyOwner exists(_txId) isExecuted(_txId){
@@ -211,7 +219,7 @@ contract MultiSig {
         if(!sent) {
             revert MultiSig__TransactionExecutionFailed(_txId);
         }
-        
+        emit TransactionExecuted(msg.sender, _txId);
     }
 
     function withdraw(uint amount) public onlyOwner {
@@ -223,6 +231,7 @@ contract MultiSig {
         if(!sent) {
             revert MultiSig__WithdrawFailed();
         }
+        emit Withdraw(msg.sender, amount);
     }
 
     function getBalance() public view returns(uint){

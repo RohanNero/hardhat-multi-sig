@@ -212,6 +212,11 @@ const { developmentChains } = require("../../helper-hardhat.config.js")
                 const finalBal = await multiSig.s_sharedFunds()
                 assert.equal(initialBal.add(7).toString(), finalBal.toString())
             })
+            it("emits SharedFundsAddded event correctly", async function() {
+                await multiSig.submitDeposit({value: "7"})
+                await expect(multiSig.addSharedFunds(7)).to.emit(multiSig, "SharedFundsAdded").withArgs(deployer.address, 7)
+
+            })
           })
           describe("proposeTransaction", function () {
               beforeEach(async function () {
@@ -321,6 +326,9 @@ const { developmentChains } = require("../../helper-hardhat.config.js")
                       finalCount.toString()
                   )
               })
+              it("emits TransactionConfirmed event correctly", async function() {
+                await expect(multiSig.confirmTransaction(0)).to.emit(multiSig, "TransactionConfirmed").withArgs(deployer.address, 0, 1)
+              })
           })
           describe("revokeConfirmation", function () {
               beforeEach(async function () {
@@ -366,6 +374,10 @@ const { developmentChains } = require("../../helper-hardhat.config.js")
                       initialCount.sub(1).toString(),
                       finalCount.toString()
                   )
+              })
+              it("emits the ConfirmationRevoked event correctly", async function() {
+                await multiSig.confirmTransaction(0)
+                await expect(multiSig.revokeConfirmation(0)).to.emit(multiSig, "ConfirmationRevoked").withArgs(deployer.address, 0, 0)
               })
           })
           describe("executeTransaction", function () {
@@ -426,6 +438,13 @@ const { developmentChains } = require("../../helper-hardhat.config.js")
                 const finalBal = await multiSig.getBalance()
                 //console.log(`finalBal: ${finalBal}`)
               })
+              it("emits TransactionExecuted event correctly", async function() {
+                await multiSig.submitDeposit({ value: "7" })
+                await multiSig.addSharedFunds("7")
+                await multiSig.connect(owner2).confirmTransaction(0)
+                await multiSig.connect(owner3).confirmTransaction(0)
+                await expect(multiSig.executeTransaction(0)).to.emit(multiSig, "TransactionExecuted").withArgs(deployer.address, 0)
+              })
           })
           describe("withdraw", function() {
             beforeEach(async function() {
@@ -451,5 +470,9 @@ const { developmentChains } = require("../../helper-hardhat.config.js")
             // it("reverts if withdraw fails", async function() { 
             //     await testHelper.withdraw("420")
             // })
+            it("it emits withdraw event correctly", async function() {
+                await multiSig.submitDeposit({value: 7})
+                await expect(multiSig.withdraw(7)).to.emit(multiSig, "Withdraw").withArgs(deployer.address, 7)
+            })
           })
       })
